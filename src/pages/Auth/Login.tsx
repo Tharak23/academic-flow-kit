@@ -15,8 +15,36 @@ const Login = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement authentication logic
-    console.log('Login attempt:', { email, password, role });
+    
+    if (!role || !email || !password) {
+      return;
+    }
+
+    // Create mock user data based on form input
+    const userData = {
+      id: Date.now().toString(),
+      email,
+      firstName: email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1),
+      lastName: 'User',
+      role: role as 'admin' | 'researcher' | 'student',
+      institution: email.includes('.edu') ? email.split('@')[1] : 'Organization'
+    };
+
+    // Store in localStorage and redirect
+    localStorage.setItem('user', JSON.stringify(userData));
+    
+    // Redirect based on role
+    switch (role) {
+      case 'admin':
+        window.location.href = '/admin/dashboard';
+        break;
+      case 'researcher':
+        window.location.href = '/dashboard';
+        break;
+      case 'student':
+        window.location.href = '/student/dashboard';
+        break;
+    }
   };
 
   const roles = [

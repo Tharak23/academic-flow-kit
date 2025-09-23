@@ -23,8 +23,41 @@ const Register = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement registration logic
-    console.log('Registration attempt:', formData);
+    
+    if (!formData.agreeToTerms || !formData.email || !formData.password || !formData.role) {
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      alert('Passwords do not match');
+      return;
+    }
+
+    // Create user data
+    const userData = {
+      id: Date.now().toString(),
+      email: formData.email,
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      role: formData.role as 'admin' | 'researcher' | 'student',
+      institution: formData.institution
+    };
+
+    // Store in localStorage and redirect
+    localStorage.setItem('user', JSON.stringify(userData));
+    
+    // Redirect based on role
+    switch (formData.role) {
+      case 'admin':
+        window.location.href = '/admin/dashboard';
+        break;
+      case 'researcher':
+        window.location.href = '/dashboard';
+        break;
+      case 'student':
+        window.location.href = '/student/dashboard';
+        break;
+    }
   };
 
   const handleInputChange = (field: string, value: string | boolean) => {
