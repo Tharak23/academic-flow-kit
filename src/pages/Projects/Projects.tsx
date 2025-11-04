@@ -27,132 +27,204 @@ import {
   FolderOpen,
   Clock,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { api } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 interface Project {
   id: string;
   title: string;
   description: string;
   status: 'active' | 'completed' | 'on-hold' | 'planning';
-  priority: 'low' | 'medium' | 'high';
-  startDate: string;
-  endDate: string;
-  progress: number;
-  members: Array<{
+  priority?: 'low' | 'medium' | 'high';
+  startDate?: string;
+  endDate?: string;
+  progress?: number;
+  leaderId?: string;
+  teamMembers?: string[];
+  members?: Array<{
     id: string;
     name: string;
     role: string;
   }>;
-  tasksCount: number;
-  documentsCount: number;
+  tasksCount?: number;
+  documentsCount?: number;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 const Projects = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [projects, setProjects] = useState<Project[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isCreating, setIsCreating] = useState(false);
   const [newProject, setNewProject] = useState({
     title: '',
     description: '',
-    priority: 'medium',
-    startDate: '',
-    endDate: ''
+    status: 'planning' as 'active' | 'completed' | 'on-hold' | 'planning',
+    teamMembers: [] as string[]
   });
 
+  // Load projects from API
   useEffect(() => {
-    // Load projects from localStorage or use mock data
-    const savedProjects = localStorage.getItem('projects');
-    if (savedProjects) {
-      setProjects(JSON.parse(savedProjects));
-    } else {
-      const mockProjects: Project[] = [
-        {
-          id: '1',
-          title: 'AI-Powered Climate Modeling',
-          description: 'Developing machine learning models to predict climate change impacts on coastal regions.',
-          status: 'active',
-          priority: 'high',
-          startDate: '2024-01-15',
-          endDate: '2024-12-31',
-          progress: 65,
-          members: [
-            { id: '1', name: 'Dr. Sarah Johnson', role: 'Principal Investigator' },
-            { id: '2', name: 'Mike Chen', role: 'Data Scientist' },
-            { id: '3', name: 'Emma Wilson', role: 'Research Assistant' }
-          ],
-          tasksCount: 24,
-          documentsCount: 18
-        },
-        {
-          id: '2',
-          title: 'Urban Sustainability Analysis',
-          description: 'Comprehensive study of sustainable practices in major metropolitan areas.',
-          status: 'active',
-          priority: 'medium',
-          startDate: '2024-03-01',
-          endDate: '2024-11-30',
-          progress: 40,
-          members: [
-            { id: '4', name: 'Prof. David Martinez', role: 'Lead Researcher' },
-            { id: '5', name: 'Lisa Park', role: 'Environmental Analyst' }
-          ],
-          tasksCount: 16,
-          documentsCount: 12
-        },
-        {
-          id: '3',
-          title: 'Renewable Energy Storage',
-          description: 'Research into next-generation battery technologies for renewable energy systems.',
-          status: 'completed',
-          priority: 'high',
-          startDate: '2023-06-01',
-          endDate: '2024-02-28',
-          progress: 100,
-          members: [
-            { id: '6', name: 'Dr. Alex Kumar', role: 'Principal Investigator' },
-            { id: '7', name: 'Rachel Adams', role: 'Materials Scientist' }
-          ],
-          tasksCount: 32,
-          documentsCount: 28
-        }
-      ];
-      setProjects(mockProjects);
-      localStorage.setItem('projects', JSON.stringify(mockProjects));
-    }
+    loadProjects();
   }, []);
-
-  const handleCreateProject = () => {
-    if (!newProject.title || !newProject.description) return;
-
-    const project: Project = {
-      id: Date.now().toString(),
-      title: newProject.title,
-      description: newProject.description,
-      status: 'planning',
-      priority: newProject.priority as 'low' | 'medium' | 'high',
-      startDate: newProject.startDate,
-      endDate: newProject.endDate,
-      progress: 0,
-      members: [],
-      tasksCount: 0,
-      documentsCount: 0
+      
+  const loadProjects = async () => {
+    try {
+      setIsLoading(true);
+      const response = await api.projects.getAll();
+      
+      if (response.success && response.data) {
+        // Map API data to expected format with mock data for display
+        const projectsWithMockData = response.data.map((project: any) => ({
+          ...project,
+          priority: 'medium' as const,
+          progress: 0,
+          members: [],
+          tasksCount: 0,
+          documentsCount: 0,
+          startDate: new Date().toISOString().split('T')[0],
+          endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+        }));
+        setProjects(projectsWithMockData);
+      } else {
+        // Fallback to mock data if API fails or returns no data
+        loadMockProjects();
+      }
+    } catch (error) {
+      console.error('Error loading projects:', error);
+      toast({
+        title: 'Using Mock Data',
+        description: 'Could not connect to API. Showing sample projects.',
+        variant: 'default'
+      });
+      loadMockProjects();
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    const updatedProjects = [...projects, project];
-    setProjects(updatedProjects);
-    localStorage.setItem('projects', JSON.stringify(updatedProjects));
-    
-    setNewProject({
-      title: '',
-      description: '',
-      priority: 'medium',
-      startDate: '',
-      endDate: ''
-    });
-    setIsCreateDialogOpen(false);
+  const loadMockProjects = () => {
+    const mockProjects: Project[] = [
+      {
+        id: '1',
+        title: 'AI-Powered Climate Modeling',
+        description: 'Developing machine learning models to predict climate change impacts on coastal regions.',
+        status: 'active',
+        priority: 'high',
+        startDate: '2024-01-15',
+        endDate: '2024-12-31',
+        progress: 65,
+        members: [
+          { id: '1', name: 'Dr. Sarah Johnson', role: 'Principal Investigator' },
+          { id: '2', name: 'Mike Chen', role: 'Data Scientist' },
+          { id: '3', name: 'Emma Wilson', role: 'Research Assistant' }
+        ],
+        tasksCount: 24,
+        documentsCount: 18
+      },
+      {
+        id: '2',
+        title: 'Urban Sustainability Analysis',
+        description: 'Comprehensive study of sustainable practices in major metropolitan areas.',
+        status: 'active',
+        priority: 'medium',
+        startDate: '2024-03-01',
+        endDate: '2024-11-30',
+        progress: 40,
+        members: [
+          { id: '4', name: 'Prof. David Martinez', role: 'Lead Researcher' },
+          { id: '5', name: 'Lisa Park', role: 'Environmental Analyst' }
+        ],
+        tasksCount: 16,
+        documentsCount: 12
+      },
+      {
+        id: '3',
+        title: 'Renewable Energy Storage',
+        description: 'Research into next-generation battery technologies for renewable energy systems.',
+        status: 'completed',
+        priority: 'high',
+        startDate: '2023-06-01',
+        endDate: '2024-02-28',
+        progress: 100,
+        members: [
+          { id: '6', name: 'Dr. Alex Kumar', role: 'Principal Investigator' },
+          { id: '7', name: 'Rachel Adams', role: 'Materials Scientist' }
+        ],
+        tasksCount: 32,
+        documentsCount: 28
+      }
+    ];
+    setProjects(mockProjects);
+  };
+
+  const handleCreateProject = async () => {
+    if (!newProject.title || !newProject.description) {
+      toast({
+        title: 'Missing Information',
+        description: 'Please provide both title and description.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    try {
+      setIsCreating(true);
+      const response = await api.projects.create({
+        title: newProject.title,
+        description: newProject.description,
+        status: newProject.status,
+        teamMembers: newProject.teamMembers
+      });
+
+      if (response.success && response.data) {
+        toast({
+          title: 'Project Created',
+          description: 'Your project has been created successfully.',
+        });
+      
+        // Add the new project to the list with mock data for display
+        const projectWithMockData = {
+          ...response.data,
+          priority: 'medium' as const,
+        progress: 0,
+        members: [],
+        tasksCount: 0,
+        documentsCount: 0,
+          startDate: new Date().toISOString().split('T')[0],
+          endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      };
+
+        setProjects([...projects, projectWithMockData]);
+      
+      setNewProject({
+        title: '',
+        description: '',
+          status: 'planning',
+          teamMembers: []
+      });
+      setIsCreateDialogOpen(false);
+      }
+    } catch (error) {
+      console.error('Error creating project:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to create project. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const getStatusIcon = (status: string) => {
@@ -199,6 +271,20 @@ const Projects = () => {
     return matchesSearch && matchesStatus;
   });
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <DashboardNavbar />
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <DashboardNavbar />
@@ -227,63 +313,61 @@ const Projects = () => {
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="title">Project Title</Label>
+                  <Label htmlFor="title">Project Title *</Label>
                   <Input
                     id="title"
                     placeholder="Enter project title"
                     value={newProject.title}
                     onChange={(e) => setNewProject(prev => ({ ...prev, title: e.target.value }))}
+                    required
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="description">Description</Label>
+                  <Label htmlFor="description">Description *</Label>
                   <Textarea
                     id="description"
-                    placeholder="Describe your project"
+                    placeholder="Describe your project goals and objectives"
                     value={newProject.description}
                     onChange={(e) => setNewProject(prev => ({ ...prev, description: e.target.value }))}
+                    rows={4}
+                    required
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="priority">Priority</Label>
-                    <Select value={newProject.priority} onValueChange={(value) => setNewProject(prev => ({ ...prev, priority: value }))}>
+                  <Label htmlFor="status">Status</Label>
+                  <Select value={newProject.status} onValueChange={(value: any) => setNewProject(prev => ({ ...prev, status: value }))}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="low">Low</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="planning">Planning</SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="on-hold">On Hold</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="startDate">Start Date</Label>
-                    <Input
-                      id="startDate"
-                      type="date"
-                      value={newProject.startDate}
-                      onChange={(e) => setNewProject(prev => ({ ...prev, startDate: e.target.value }))}
-                    />
-                  </div>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="endDate">End Date</Label>
-                  <Input
-                    id="endDate"
-                    type="date"
-                    value={newProject.endDate}
-                    onChange={(e) => setNewProject(prev => ({ ...prev, endDate: e.target.value }))}
-                  />
                 </div>
               </div>
               <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsCreateDialogOpen(false)}
+                  disabled={isCreating}
+                >
                   Cancel
                 </Button>
-                <Button onClick={handleCreateProject}>
-                  Create Project
+                <Button 
+                  onClick={handleCreateProject}
+                  disabled={isCreating || !newProject.title || !newProject.description}
+                >
+                  {isCreating ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    'Create Project'
+                  )}
                 </Button>
               </div>
             </DialogContent>
@@ -317,9 +401,10 @@ const Projects = () => {
         </div>
 
         {/* Projects Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProjects.map((project) => (
-            <Card key={project.id} className="hover:shadow-lg transition-shadow duration-200">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredProjects.map((project) => (
+            <Link to={`/projects/${project.id}`} key={project.id}>
+              <Card className="hover:shadow-lg transition-all duration-200 hover:border-primary/50 cursor-pointer">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center space-x-2">
@@ -328,17 +413,14 @@ const Projects = () => {
                       {project.status.replace('-', ' ')}
                     </Badge>
                   </div>
+                    {project.priority && (
                   <Badge className={getPriorityColor(project.priority)}>
                     {project.priority}
                   </Badge>
+                    )}
                 </div>
-                <CardTitle className="text-lg">
-                  <Link 
-                    to={`/projects/${project.id}`} 
-                    className="hover:text-primary transition-colors"
-                  >
+                  <CardTitle className="text-lg hover:text-primary transition-colors">
                     {project.title}
-                  </Link>
                 </CardTitle>
                 <CardDescription className="line-clamp-2">
                   {project.description}
@@ -346,6 +428,7 @@ const Projects = () => {
               </CardHeader>
               <CardContent>
                 {/* Progress Bar */}
+                {project.progress !== undefined && (
                 <div className="mb-4">
                   <div className="flex justify-between text-sm mb-1">
                     <span>Progress</span>
@@ -358,12 +441,14 @@ const Projects = () => {
                     />
                   </div>
                 </div>
+                )}
 
                 {/* Members */}
+                {project.members && project.members.length > 0 && (
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center space-x-2">
                     <div className="flex -space-x-2">
-                      {project.members.slice(0, 3).map((member, index) => (
+                        {project.members.slice(0, 3).map((member) => (
                         <Avatar key={member.id} className="w-6 h-6 border-2 border-background">
                           <AvatarFallback className="text-xs">
                             {member.name.split(' ').map(n => n[0]).join('')}
@@ -383,26 +468,36 @@ const Projects = () => {
                     </span>
                   </div>
                 </div>
+                )}
 
                 {/* Stats */}
                 <div className="flex justify-between text-sm text-muted-foreground">
                   <div className="flex items-center space-x-1">
                     <CheckCircle className="h-4 w-4" />
-                    <span>{project.tasksCount} tasks</span>
+                    <span>{project.tasksCount || 0} tasks</span>
                   </div>
                   <div className="flex items-center space-x-1">
                     <FileText className="h-4 w-4" />
-                    <span>{project.documentsCount} docs</span>
+                    <span>{project.documentsCount || 0} docs</span>
                   </div>
-                  <div className="flex items-center space-x-1">
-                    <Calendar className="h-4 w-4" />
-                    <span>{new Date(project.endDate).toLocaleDateString()}</span>
-                  </div>
+                  {project.endDate && (
+                    <div className="flex items-center space-x-1">
+                      <Calendar className="h-4 w-4" />
+                      <span>{new Date(project.endDate).toLocaleDateString()}</span>
+                    </div>
+                  )}
+                  {!project.endDate && project.createdAt && (
+                    <div className="flex items-center space-x-1">
+                      <Calendar className="h-4 w-4" />
+                      <span>{new Date(project.createdAt).toLocaleDateString()}</span>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
-          ))}
-        </div>
+            </Link>
+            ))}
+          </div>
 
         {filteredProjects.length === 0 && (
           <div className="text-center py-12">

@@ -1,10 +1,14 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ArrowRight, Users, FileText, MessageSquare, CheckCircle, BookOpen, Zap } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { UserButton } from '@clerk/clerk-react';
 
 const Landing = () => {
+  const { isAuthenticated, user, isLoading } = useAuth();
+  const navigate = useNavigate();
   const features = [
     {
       icon: <Users className="h-6 w-6 text-primary" />,
@@ -51,8 +55,41 @@ const Landing = () => {
               <span className="text-xl font-bold text-foreground">ResearchHub</span>
             </div>
             <div className="flex items-center space-x-4">
-              <Link to="/login" className="btn-ghost">Sign In</Link>
-              <Link to="/register" className="btn-primary">Get Started</Link>
+              {!isLoading && (
+                <>
+                  {isAuthenticated ? (
+                    <>
+                      <Button 
+                        variant="ghost" 
+                        onClick={() => {
+                          if (user?.role === 'admin') navigate('/admin/dashboard');
+                          else if (user?.role === 'student') navigate('/student/dashboard');
+                          else navigate('/dashboard');
+                        }}
+                      >
+                        Go to Dashboard
+                      </Button>
+                      <UserButton 
+                        afterSignOutUrl="/"
+                        appearance={{
+                          elements: {
+                            avatarBox: "h-8 w-8"
+                          }
+                        }}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <Button variant="ghost" asChild>
+                        <Link to="/login">Sign In</Link>
+                      </Button>
+                      <Button asChild>
+                        <Link to="/register">Get Started</Link>
+                      </Button>
+                    </>
+                  )}
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -70,13 +107,34 @@ const Landing = () => {
             document collaboration, and communication tools designed for academic excellence.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/register" className="btn-primary inline-flex items-center">
-              Start Your Research Journey
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-            <Link to="/about" className="btn-secondary">
-              Learn More
-            </Link>
+            {isAuthenticated ? (
+              <Button 
+                size="lg"
+                onClick={() => {
+                  if (user?.role === 'admin') navigate('/admin/dashboard');
+                  else if (user?.role === 'student') navigate('/student/dashboard');
+                  else navigate('/dashboard');
+                }}
+                className="inline-flex items-center"
+              >
+                Go to Your Dashboard
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            ) : (
+              <>
+                <Button size="lg" asChild>
+                  <Link to="/register" className="inline-flex items-center">
+                    Start Your Research Journey
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button size="lg" variant="outline" asChild>
+                  <Link to="/login">
+                    Sign In
+                  </Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </section>
@@ -118,10 +176,27 @@ const Landing = () => {
           <p className="mb-8 text-lg text-muted-foreground max-w-2xl mx-auto">
             Join thousands of researchers already using ResearchHub to collaborate and achieve breakthrough results.
           </p>
-          <Link to="/register" className="btn-primary inline-flex items-center text-lg px-8 py-4">
-            Get Started Today
-            <ArrowRight className="ml-2 h-5 w-5" />
-          </Link>
+          {isAuthenticated ? (
+            <Button 
+              size="lg"
+              onClick={() => {
+                if (user?.role === 'admin') navigate('/admin/dashboard');
+                else if (user?.role === 'student') navigate('/student/dashboard');
+                else navigate('/dashboard');
+              }}
+              className="inline-flex items-center text-lg px-8 py-4"
+            >
+              Go to Dashboard
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+          ) : (
+            <Button size="lg" asChild className="inline-flex items-center text-lg px-8 py-4">
+              <Link to="/register">
+                Get Started Today
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Link>
+            </Button>
+          )}
         </div>
       </section>
 

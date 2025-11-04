@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useUser } from '@clerk/clerk-react';
+import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,25 +22,66 @@ import {
   BookOpen,
   Users,
   Calendar,
-  Settings
+  Settings,
+  Loader2
 } from 'lucide-react';
-import Navbar from '@/components/Navigation/Navbar';
+import DashboardNavbar from '@/components/Navigation/DashboardNavbar';
+import { useToast } from '@/hooks/use-toast';
 
 const Profile = () => {
+  const { user: clerkUser } = useUser();
+  const { user: authUser } = useAuth();
+  const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [profileData, setProfileData] = useState({
-    firstName: 'Dr. John',
-    lastName: 'Smith',
-    email: 'j.smith@university.edu',
-    role: 'researcher',
-    institution: 'Stanford University',
-    department: 'Computer Science',
-    location: 'Stanford, CA',
-    bio: 'Passionate researcher in machine learning and artificial intelligence with over 10 years of experience in academic research. Focused on developing innovative solutions for complex problems.',
-    website: 'https://johnsmith.research.edu',
-    researchInterests: ['Machine Learning', 'Artificial Intelligence', 'Data Mining', 'Neural Networks'],
-    orcid: '0000-0000-0000-0000'
+    firstName: '',
+    lastName: '',
+    email: '',
+    role: '',
+    institution: '',
+    department: '',
+    location: '',
+    bio: '',
+    website: '',
+    researchInterests: [] as string[],
+    orcid: ''
   });
+
+  // Load profile data from Clerk and localStorage
+  useEffect(() => {
+    if (clerkUser && authUser) {
+      const storedProfile = localStorage.getItem('userProfile');
+      let profileFromStorage = null;
+      
+      if (storedProfile) {
+        try {
+          profileFromStorage = JSON.parse(storedProfile);
+        } catch (e) {
+          console.error('Error parsing stored profile:', e);
+        }
+      }
+
+      // Merge data: Clerk user data + stored profile + auth user data
+      setProfileData({
+        firstName: clerkUser.firstName || authUser.firstName || profileFromStorage?.firstName || '',
+        lastName: clerkUser.lastName || authUser.lastName || profileFromStorage?.lastName || '',
+        email: clerkUser.emailAddresses[0]?.emailAddress || authUser.email || profileFromStorage?.email || '',
+        role: authUser.role || profileFromStorage?.role || '',
+        institution: clerkUser.unsafeMetadata?.institution as string || profileFromStorage?.institution || authUser.institution || '',
+        department: clerkUser.unsafeMetadata?.department as string || profileFromStorage?.department || '',
+        location: profileFromStorage?.location || '',
+        bio: clerkUser.unsafeMetadata?.bio as string || profileFromStorage?.bio || '',
+        website: profileFromStorage?.website || '',
+        researchInterests: profileFromStorage?.researchInterests || [],
+        orcid: profileFromStorage?.orcid || ''
+      });
+      setIsLoading(false);
+    } else if (!clerkUser) {
+      setIsLoading(false);
+    }
+  }, [clerkUser, authUser]);
 
   const achievements = [
     { title: 'Outstanding Research Award 2024', organization: 'Stanford University', year: '2024' },
@@ -92,10 +135,71 @@ const Profile = () => {
     }
   ];
 
-  const handleSave = () => {
-    // TODO: Implement save functionality
-    setIsEditing(false);
-    console.log('Saving profile data:', profileData);
+  const handleSave = async () => {
+    if (!clerkUser) return;
+
+    setIsSaving(true);
+    try {
+      // Update Clerk metadata
+      await clerkUser.update({
+        unsafeMetadata: {
+          ...clerkUser.unsafeMetadata,
+          role: profileData.role,
+          institution: profileData.institution,
+          department: profileData.department,
+          bio: profileData.bio,
+          location: profileData.location,
+          website: profileData.website,
+          researchInterests: profileData.researchInterests,
+          orcid: profileData.orcid,
+          onboardingComplete: true
+        }
+      });
+
+      // Save to localStorage
+      const profileToSave = {
+        id: clerkUser.id,
+        email: profileData.email,
+        firstName: profileData.firstName,
+        lastName: profileData.lastName,
+        role: profileData.role,
+        institution: profileData.institution,
+        department: profileData.department,
+        location: profileData.location,
+        bio: profileData.bio,
+        website: profileData.website,
+        researchInterests: profileData.researchInterests,
+        orcid: profileData.orcid,
+        imageUrl: clerkUser.imageUrl
+      };
+
+      localStorage.setItem('userProfile', JSON.stringify(profileToSave));
+      localStorage.setItem('user', JSON.stringify({
+        id: clerkUser.id,
+        email: profileData.email,
+        firstName: profileData.firstName,
+        lastName: profileData.lastName,
+        role: profileData.role,
+        institution: profileData.institution,
+        imageUrl: clerkUser.imageUrl
+      }));
+
+      toast({
+        title: 'Profile Updated',
+        description: 'Your profile has been saved successfully.',
+      });
+
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to save profile. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -120,9 +224,24 @@ const Profile = () => {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <DashboardNavbar />
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const fullName = `${profileData.firstName} ${profileData.lastName}`.trim() || 'User';
+  
   return (
     <div className="min-h-screen bg-background">
-      <Navbar userRole={profileData.role as any} userName={`${profileData.firstName} ${profileData.lastName}`} />
+      <DashboardNavbar />
       
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
@@ -137,9 +256,9 @@ const Profile = () => {
             <div className="flex flex-col md:flex-row items-start md:items-center space-y-4 md:space-y-0 md:space-x-6">
               <div className="relative">
                 <Avatar className="h-24 w-24">
-                  <AvatarImage src="/placeholder-avatar.jpg" alt={`${profileData.firstName} ${profileData.lastName}`} />
+                  <AvatarImage src={clerkUser?.imageUrl || authUser?.imageUrl} alt={fullName} />
                   <AvatarFallback className="bg-primary text-primary-foreground text-2xl">
-                    {profileData.firstName[0]}{profileData.lastName[0]}
+                    {profileData.firstName?.[0] || ''}{profileData.lastName?.[0] || ''}
                   </AvatarFallback>
                 </Avatar>
                 <Button size="sm" className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full p-0">
@@ -150,7 +269,7 @@ const Profile = () => {
               <div className="flex-1">
                 <div className="flex items-center space-x-3 mb-2">
                   <h2 className="text-2xl font-bold text-foreground">
-                    {profileData.firstName} {profileData.lastName}
+                    {fullName || 'User'}
                   </h2>
                   <Badge className={getRoleColor(profileData.role)}>
                     {getRoleLabel(profileData.role)}
@@ -180,9 +299,18 @@ const Profile = () => {
                   </Button>
                 ) : (
                   <>
-                    <Button onClick={handleSave} className="btn-primary">
-                      <Save className="h-4 w-4 mr-2" />
-                      Save Changes
+                    <Button onClick={handleSave} className="btn-primary" disabled={isSaving}>
+                      {isSaving ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="h-4 w-4 mr-2" />
+                          Save Changes
+                        </>
+                      )}
                     </Button>
                     <Button onClick={() => setIsEditing(false)} variant="outline">
                       Cancel

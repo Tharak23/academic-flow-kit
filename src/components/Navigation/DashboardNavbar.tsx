@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { UserButton } from '@clerk/clerk-react';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -26,34 +27,14 @@ import {
   BookOpen,
   BarChart3
 } from 'lucide-react';
-
-interface User {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: 'admin' | 'researcher' | 'student';
-  institution?: string;
-}
+import { useAuth } from '@/hooks/useAuth';
 
 const DashboardNavbar = () => {
-  const [user, setUser] = useState<User | null>(null);
+  const { user, logout, isLoading } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
 
-  useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-  }, []);
-
-  const handleLogout = () => {
-    localStorage.removeItem('user');
-    window.location.href = '/';
-  };
-
-  if (!user) return null;
+  if (isLoading || !user) return null;
 
   const getNavigationItems = () => {
     const commonItems = [
@@ -133,47 +114,32 @@ const DashboardNavbar = () => {
               </Badge>
             </Button>
 
-            {/* User Menu */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-primary text-primary-foreground">
-                      {user.firstName[0]}{user.lastName[0]}
-                    </AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
-                <div className="flex items-center justify-start gap-2 p-2">
-                  <div className="flex flex-col space-y-1 leading-none">
-                    <p className="font-medium">{user.firstName} {user.lastName}</p>
-                    <p className="w-[200px] truncate text-sm text-muted-foreground">
-                      {user.email}
-                    </p>
-                    <Badge variant="secondary" className="w-fit text-xs">
-                      {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                    </Badge>
-                  </div>
-                </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link to="/profile" className="flex items-center">
-                    <User className="mr-2 h-4 w-4" />
-                    <span>Profile</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>Settings</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Log out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* User Menu - Using Clerk's UserButton with custom styling */}
+            <div className="flex items-center space-x-3">
+              <UserButton 
+                afterSignOutUrl="/"
+                appearance={{
+                  elements: {
+                    avatarBox: "h-9 w-9 rounded-full",
+                    userButtonPopoverCard: "shadow-xl",
+                    userButtonPopoverActions: "gap-2"
+                  }
+                }}
+              >
+                <UserButton.MenuItems>
+                  <UserButton.Link
+                    label="Profile"
+                    labelIcon={<User className="h-4 w-4" />}
+                    href="/profile"
+                  />
+                  <UserButton.Action
+                    label="Settings"
+                    labelIcon={<Settings className="h-4 w-4" />}
+                    onClick={() => {/* Add settings modal */}}
+                  />
+                </UserButton.MenuItems>
+              </UserButton>
+            </div>
 
             {/* Mobile menu button */}
             <Button
