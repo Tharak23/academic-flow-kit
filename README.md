@@ -18,7 +18,7 @@ A modern, responsive frontend application for academic research collaboration bu
 - Clerk account (free tier available at [clerk.com](https://clerk.com))
 - Backend API running (see backend README)
 
-## 🛠️ Installation
+## 🛠️ Install
 
 ### 1. Install Dependencies
 
