@@ -124,7 +124,7 @@ academic-flow-kit/
 └── vite.config.ts
 ```
 
-## 🔐 Authentication Flow
+## 🔐 Authentication 
 
 ### How Clerk Integration Works
 
