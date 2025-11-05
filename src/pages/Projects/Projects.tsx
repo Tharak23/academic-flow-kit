@@ -101,10 +101,10 @@ const Projects = () => {
     } catch (error) {
       console.error('Error loading projects:', error);
       loadMockProjects();
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const saveProjects = (projectsToSave: Project[]) => {
     try {

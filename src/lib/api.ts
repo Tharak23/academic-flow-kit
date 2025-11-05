@@ -12,22 +12,15 @@ class ApiClient {
   }
 
   /**
-   * Get authentication token from Clerk
+   * Get authentication token from local storage
    */
   private async getAuthToken(): Promise<string | null> {
     try {
-      // Get token from localStorage (stored by Clerk)
-      const clerkSession = localStorage.getItem('__clerk_session');
-      if (clerkSession) {
-        return clerkSession;
+      const user = localStorage.getItem('user');
+      if (user) {
+        const parsedUser = JSON.parse(user);
+        return parsedUser.id || null;
       }
-      
-      // Try to get from window.__clerk if available
-      if (typeof window !== 'undefined' && (window as any).__clerk) {
-        const session = await (window as any).__clerk.session?.getToken();
-        return session || null;
-      }
-      
       return null;
     } catch (error) {
       console.error('Error getting auth token:', error);
