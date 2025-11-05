@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useUser } from '@clerk/clerk-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -10,9 +9,12 @@ import { GraduationCap, User, Building, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const RoleSelection = () => {
-  const { user } = useUser();
   const navigate = useNavigate();
   const { toast } = useToast();
+  
+  // Get email from localStorage (set during registration)
+  const tempEmail = localStorage.getItem('tempEmail') || 'user@example.com';
+  const tempName = localStorage.getItem('tempName') || 'User';
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     role: '',
@@ -63,30 +65,24 @@ const RoleSelection = () => {
     setIsSubmitting(true);
 
     try {
-      // Update Clerk user metadata
-      await user?.update({
-        unsafeMetadata: {
-          role: formData.role,
-          institution: formData.institution,
-          department: formData.department,
-          bio: formData.bio,
-          onboardingComplete: true
-        }
-      });
-
-      // Store in localStorage as well for persistence
+      // Store user data in localStorage
       const userData = {
-        id: user?.id,
-        email: user?.emailAddresses[0]?.emailAddress,
-        firstName: user?.firstName,
-        lastName: user?.lastName,
+        id: Math.random().toString(36).substr(2, 9),
+        email: tempEmail,
+        firstName: tempName.split(' ')[0] || 'User',
+        lastName: tempName.split(' ')[1] || '',
         role: formData.role,
         institution: formData.institution,
         department: formData.department,
         bio: formData.bio,
-        imageUrl: user?.imageUrl
+        imageUrl: ''
       };
+      localStorage.setItem('user', JSON.stringify(userData));
       localStorage.setItem('userProfile', JSON.stringify(userData));
+      
+      // Clear temp data
+      localStorage.removeItem('tempEmail');
+      localStorage.removeItem('tempName');
 
       toast({
         title: 'Profile Updated!',
@@ -112,7 +108,7 @@ const RoleSelection = () => {
     }
   };
 
-  const userName = user?.firstName || user?.emailAddresses[0]?.emailAddress?.split('@')[0] || 'User';
+  const userName = tempName;
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">

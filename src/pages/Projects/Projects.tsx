@@ -81,9 +81,9 @@ const Projects = () => {
   const loadProjects = async () => {
     try {
       setIsLoading(true);
-      const response = await api.projects.getAll();
+      const response: any = await api.projects.getAll();
       
-      if (response.success && response.data) {
+      if (response?.success && response?.data) {
         // Map API data to expected format with mock data for display
         const projectsWithMockData = response.data.map((project: any) => ({
           ...project,
@@ -180,14 +180,14 @@ const Projects = () => {
 
     try {
       setIsCreating(true);
-      const response = await api.projects.create({
+      const response: any = await api.projects.create({
         title: newProject.title,
         description: newProject.description,
         status: newProject.status,
         teamMembers: newProject.teamMembers
       });
 
-      if (response.success && response.data) {
+      if (response?.success && response?.data) {
         toast({
           title: 'Project Created',
           description: 'Your project has been created successfully.',

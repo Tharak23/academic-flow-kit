@@ -30,13 +30,13 @@ const ProjectDetails = () => {
   const loadProjectDetails = async () => {
     setIsLoading(true);
     try {
-      const response = await api.projects.getById(id!);
-      if (response.success) {
+      const response: any = await api.projects.getById(id!);
+      if (response?.success) {
         setProject(response.data);
         
         // Load tasks for this project
-        const tasksResponse = await api.tasks.getAll({ projectId: id });
-        if (tasksResponse.success) {
+        const tasksResponse: any = await api.tasks.getAll({ projectId: id });
+        if (tasksResponse?.success) {
           setTasks(tasksResponse.data || []);
         }
       }
