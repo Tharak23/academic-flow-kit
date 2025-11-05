@@ -31,7 +31,6 @@ import {
   Loader2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { api } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -46,6 +45,9 @@ interface Project {
   progress?: number;
   leaderId?: string;
   teamMembers?: string[];
+  budget?: string;
+  department?: string;
+  institution?: string;
   members?: Array<{
     id: string;
     name: string;
@@ -53,8 +55,8 @@ interface Project {
   }>;
   tasksCount?: number;
   documentsCount?: number;
-  createdAt?: Date;
-  updatedAt?: Date;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 const Projects = () => {
@@ -70,48 +72,47 @@ const Projects = () => {
     title: '',
     description: '',
     status: 'planning' as 'active' | 'completed' | 'on-hold' | 'planning',
+    priority: 'medium' as 'low' | 'medium' | 'high',
+    startDate: '',
+    endDate: '',
+    budget: '',
+    department: '',
+    institution: '',
     teamMembers: [] as string[]
   });
 
-  // Load projects from API
+  // Load projects from localStorage
   useEffect(() => {
     loadProjects();
   }, []);
       
-  const loadProjects = async () => {
+  const loadProjects = () => {
     try {
       setIsLoading(true);
-      const response = await api.projects.getAll();
+      const storedProjects = localStorage.getItem('projects');
       
-      if (response.success && response.data) {
-        // Map API data to expected format with mock data for display
-        const projectsWithMockData = response.data.map((project: any) => ({
-          ...project,
-          priority: 'medium' as const,
-          progress: 0,
-          members: [],
-          tasksCount: 0,
-          documentsCount: 0,
-          startDate: new Date().toISOString().split('T')[0],
-          endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-        }));
-        setProjects(projectsWithMockData);
+      if (storedProjects) {
+        const parsedProjects = JSON.parse(storedProjects);
+        setProjects(parsedProjects);
       } else {
-        // Fallback to mock data if API fails or returns no data
+        // Load initial mock projects if no stored data
         loadMockProjects();
       }
     } catch (error) {
       console.error('Error loading projects:', error);
-      toast({
-        title: 'Using Mock Data',
-        description: 'Could not connect to API. Showing sample projects.',
-        variant: 'default'
-      });
       loadMockProjects();
       } finally {
         setIsLoading(false);
       }
     };
+
+  const saveProjects = (projectsToSave: Project[]) => {
+    try {
+      localStorage.setItem('projects', JSON.stringify(projectsToSave));
+    } catch (error) {
+      console.error('Error saving projects:', error);
+    }
+  };
 
   const loadMockProjects = () => {
     const mockProjects: Project[] = [
@@ -124,13 +125,18 @@ const Projects = () => {
         startDate: '2024-01-15',
         endDate: '2024-12-31',
         progress: 65,
+        budget: '$150,000',
+        department: 'Computer Science',
+        institution: 'ResearchHub University',
         members: [
           { id: '1', name: 'Dr. Sarah Johnson', role: 'Principal Investigator' },
           { id: '2', name: 'Mike Chen', role: 'Data Scientist' },
           { id: '3', name: 'Emma Wilson', role: 'Research Assistant' }
         ],
         tasksCount: 24,
-        documentsCount: 18
+        documentsCount: 18,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       },
       {
         id: '2',
@@ -141,12 +147,17 @@ const Projects = () => {
         startDate: '2024-03-01',
         endDate: '2024-11-30',
         progress: 40,
+        budget: '$95,000',
+        department: 'Environmental Science',
+        institution: 'ResearchHub University',
         members: [
           { id: '4', name: 'Prof. David Martinez', role: 'Lead Researcher' },
           { id: '5', name: 'Lisa Park', role: 'Environmental Analyst' }
         ],
         tasksCount: 16,
-        documentsCount: 12
+        documentsCount: 12,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       },
       {
         id: '3',
@@ -157,18 +168,24 @@ const Projects = () => {
         startDate: '2023-06-01',
         endDate: '2024-02-28',
         progress: 100,
+        budget: '$200,000',
+        department: 'Engineering',
+        institution: 'ResearchHub University',
         members: [
           { id: '6', name: 'Dr. Alex Kumar', role: 'Principal Investigator' },
           { id: '7', name: 'Rachel Adams', role: 'Materials Scientist' }
         ],
         tasksCount: 32,
-        documentsCount: 28
+        documentsCount: 28,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       }
     ];
     setProjects(mockProjects);
+    saveProjects(mockProjects);
   };
 
-  const handleCreateProject = async () => {
+  const handleCreateProject = () => {
     if (!newProject.title || !newProject.description) {
       toast({
         title: 'Missing Information',
@@ -180,41 +197,50 @@ const Projects = () => {
 
     try {
       setIsCreating(true);
-      const response = await api.projects.create({
+      
+      const newProjectData: Project = {
+        id: `proj_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         title: newProject.title,
         description: newProject.description,
         status: newProject.status,
-        teamMembers: newProject.teamMembers
-      });
-
-      if (response.success && response.data) {
-        toast({
-          title: 'Project Created',
-          description: 'Your project has been created successfully.',
-        });
-      
-        // Add the new project to the list with mock data for display
-        const projectWithMockData = {
-          ...response.data,
-          priority: 'medium' as const,
+        priority: newProject.priority,
+        startDate: newProject.startDate || new Date().toISOString().split('T')[0],
+        endDate: newProject.endDate || '',
+        budget: newProject.budget || '',
+        department: newProject.department || '',
+        institution: newProject.institution || '',
         progress: 0,
+        leaderId: user?.id || '',
+        teamMembers: newProject.teamMembers,
         members: [],
         tasksCount: 0,
         documentsCount: 0,
-          startDate: new Date().toISOString().split('T')[0],
-          endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
 
-        setProjects([...projects, projectWithMockData]);
+      const updatedProjects = [...projects, newProjectData];
+      setProjects(updatedProjects);
+      saveProjects(updatedProjects);
+
+      toast({
+        title: 'Project Created',
+        description: 'Your project has been created successfully.',
+      });
       
       setNewProject({
         title: '',
         description: '',
-          status: 'planning',
-          teamMembers: []
+        status: 'planning',
+        priority: 'medium',
+        startDate: '',
+        endDate: '',
+        budget: '',
+        department: '',
+        institution: '',
+        teamMembers: []
       });
       setIsCreateDialogOpen(false);
-      }
     } catch (error) {
       console.error('Error creating project:', error);
       toast({
@@ -311,7 +337,7 @@ const Projects = () => {
                   Start a new research project and invite collaborators.
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid gap-4 py-4">
+              <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto">
                 <div className="grid gap-2">
                   <Label htmlFor="title">Project Title *</Label>
                   <Input
@@ -333,19 +359,83 @@ const Projects = () => {
                     required
                   />
                 </div>
+                <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
-                  <Label htmlFor="status">Status</Label>
-                  <Select value={newProject.status} onValueChange={(value: any) => setNewProject(prev => ({ ...prev, status: value }))}>
+                    <Label htmlFor="status">Status</Label>
+                    <Select value={newProject.status} onValueChange={(value: any) => setNewProject(prev => ({ ...prev, status: value }))}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                      <SelectItem value="planning">Planning</SelectItem>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="on-hold">On Hold</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="planning">Planning</SelectItem>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="on-hold">On Hold</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="priority">Priority</Label>
+                    <Select value={newProject.priority} onValueChange={(value: any) => setNewProject(prev => ({ ...prev, priority: value }))}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">Low</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="startDate">Start Date</Label>
+                    <Input
+                      id="startDate"
+                      type="date"
+                      value={newProject.startDate}
+                      onChange={(e) => setNewProject(prev => ({ ...prev, startDate: e.target.value }))}
+                    />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="endDate">End Date</Label>
+                  <Input
+                    id="endDate"
+                    type="date"
+                    value={newProject.endDate}
+                    onChange={(e) => setNewProject(prev => ({ ...prev, endDate: e.target.value }))}
+                  />
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="budget">Budget</Label>
+                  <Input
+                    id="budget"
+                    placeholder="e.g., $50,000"
+                    value={newProject.budget}
+                    onChange={(e) => setNewProject(prev => ({ ...prev, budget: e.target.value }))}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="department">Department</Label>
+                    <Input
+                      id="department"
+                      placeholder="Department name"
+                      value={newProject.department}
+                      onChange={(e) => setNewProject(prev => ({ ...prev, department: e.target.value }))}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="institution">Institution</Label>
+                    <Input
+                      id="institution"
+                      placeholder="Institution name"
+                      value={newProject.institution}
+                      onChange={(e) => setNewProject(prev => ({ ...prev, institution: e.target.value }))}
+                    />
+                  </div>
                 </div>
               </div>
               <div className="flex justify-end space-x-2">

@@ -19,6 +19,7 @@ import ProjectOverview from "./pages/Projects/ProjectOverview";
 import ProjectDetails from "./pages/Projects/ProjectDetails";
 import Tasks from "./pages/Tasks/Tasks";
 import Messages from "./pages/Messages/Messages";
+import ResearchPapers from "./pages/ResearchPapers/ResearchPapers";
 
 const queryClient = new QueryClient();
 
@@ -135,9 +136,17 @@ const App = () => (
               </ProtectedRoute>
             } 
           />
+          <Route 
+            path="/research-papers" 
+            element={
+              <ProtectedRoute>
+                <ResearchPapers />
+              </ProtectedRoute>
+            } 
+          />
           
           {/* Placeholder routes */}
-          <Route path="/resources" element={<NotFound />} />
+          <Route path="/resources" element={<ProtectedRoute><ResearchPapers /></ProtectedRoute>} />
           <Route path="/learning" element={<NotFound />} />
           <Route path="/progress" element={<NotFound />} />
           

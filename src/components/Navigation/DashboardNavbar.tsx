@@ -42,6 +42,7 @@ const DashboardNavbar = () => {
       { name: 'Projects', href: '/projects', icon: FolderOpen },
       { name: 'Tasks', href: '/tasks', icon: CheckSquare },
       { name: 'Messages', href: '/messages', icon: MessageSquare },
+      { name: 'Research Papers', href: '/research-papers', icon: BookOpen },
     ];
 
     const roleBasedItems = {
@@ -51,7 +52,6 @@ const DashboardNavbar = () => {
       ],
       researcher: [
         { name: 'My Projects', href: '/my-projects', icon: FolderOpen },
-        { name: 'Resources', href: '/resources', icon: BookOpen },
       ],
       student: [
         { name: 'Learning', href: '/learning', icon: BookOpen },
